@@ -1,0 +1,73 @@
+cabal-version: 2.4
+name:          vec-backpack
+version:       0
+
+common deps
+  default-language:   Haskell2010
+  build-depends:      base
+  default-extensions:
+    DeriveFoldable
+    DeriveFunctor
+    DeriveTraversable
+    FunctionalDependencies
+
+library common
+  import:          deps
+  hs-source-dirs:  src-common
+  exposed-modules: ConsPattern
+
+library cons
+  import:          deps
+  hs-source-dirs:  src-cons
+  build-depends:   common
+  signatures:      In
+  exposed-modules: Out
+
+library v0
+  import:          deps
+  hs-source-dirs:  src-nil
+  exposed-modules: V0
+
+library v1
+  import:             deps
+  mixins:             cons (Out as V1) requires (In as V0)
+  reexported-modules: V1
+  build-depends:
+    , cons
+    , v0
+
+library v2
+  import:             deps
+  mixins:             cons (Out as V2) requires (In as V1)
+  reexported-modules: V2
+  build-depends:
+    , cons
+    , v1
+
+library v3
+  import:             deps
+  mixins:             cons (Out as V3) requires (In as V2)
+  reexported-modules: V3
+  build-depends:
+    , cons
+    , v2
+
+library
+  import:             deps
+  build-depends:
+    , v0
+    , v1
+    , v2
+    , v3
+
+  reexported-modules: V0, V1, V2, V3
+
+executable main
+  default-language: Haskell2010
+  main-is:          Main.hs
+  hs-source-dirs:   main
+  build-depends:
+    , vec-backpack
+    , base
+    , common
+    , transformers

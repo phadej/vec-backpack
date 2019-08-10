@@ -1,0 +1,11 @@
+signature In where
+
+data Vec a
+
+instance Eq a => Eq (Vec a)
+instance Ord a => Ord (Vec a)
+instance Show a => Show (Vec a)
+instance Functor Vec
+instance Foldable Vec
+instance Traversable Vec
+instance Applicative Vec
