@@ -1,4 +1,4 @@
-{-# LANGUAGE PatternSynonyms, ViewPatterns #-}
+{-# LANGUAGE PatternSynonyms, ViewPatterns, MonoLocalBinds #-}
 {-# OPTIONS_GHC -Wall #-}
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-all #-}
 module Main (main) where
@@ -10,8 +10,19 @@ import qualified V3
 
 import ConsPattern
 
+import Control.Exception (evaluate)
+import Control.DeepSeq (force)
+import Control.Monad ((>=>))
 import Control.Applicative (liftA2)
 import Control.Monad.Trans.State (evalState, state)
+import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
+import Control.Monad.IO.Class (liftIO)
+
+import qualified Data.Vec.Lazy.Inline as GADT
+import qualified Data.Vec.DataFamily.SpineStrict as DF
+import qualified Data.Type.Nat as N
+
+import GHC.Exts.Heap
 
 -------------------------------------------------------------------------------
 -- Patterns
@@ -59,3 +70,53 @@ main = do
     print v2
     print $ liftA2 (*) v3 v3
     print $ liftA2 (+) v3a v3b
+
+    putStrLn "Sizes"
+    printSize "v0 :: V0 Double" v0
+    printSize "v1 :: V1 Double" v1
+    printSize "v2 :: V2 Double" v2
+    printSize "v3 :: V3 Double" v3
+
+    let gadt = 1.0 GADT.::: 2.0 GADT.::: 3.0 GADT.::: GADT.VNil :: GADT.Vec N.Nat3 Double
+    _ <- evaluate (force gadt)
+    printSize "gadt :: Vec Nat3 Double" gadt
+
+    let df = 1.0 DF.::: 2.0 DF.::: 3.0 DF.::: DF.VNil :: DF.Vec N.Nat3 Double
+    _ <- evaluate (force df)
+    printSize "gadt :: Vec Nat3 Double" df
+
+    let manual = Manual 1.0 2.0 3.0 :: Manual Double
+    printSize "manual :: Manual Double" manual
+
+  where
+    printSize n x = do
+        s <- calculateSize x
+        putStrLn $ "| " ++ n ++ " | = " ++ show s
+
+-------------------------------------------------------------------------------
+-- Manual
+-------------------------------------------------------------------------------
+
+data Manual a = Manual !a !a !a
+
+-------------------------------------------------------------------------------
+-- calculate size
+-------------------------------------------------------------------------------
+
+calculateSize :: HasHeapRep a => a -> IO (Maybe Int)
+calculateSize val = do
+    c <- getClosureData val
+    runMaybeT (go c)
+  where
+    go :: Closure -> MaybeT IO Int
+    go _c@(ConstrClosure _ pargs dargs _ _ _) = do
+        -- liftIO $ print _c
+        ds <- traverse (liftIO . getBoxedClosureData >=> go) pargs
+        return
+            $ 1
+            + length dargs -- data words
+            + length pargs -- pointers
+            + sum ds       -- size of pointed data
+    go x = do
+        liftIO $ print x
+        return 0

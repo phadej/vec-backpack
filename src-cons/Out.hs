@@ -4,7 +4,7 @@ import qualified In
 
 import ConsPattern
 
-data Vec a = !a ::: {-# UNPACK #-} !(In.Vec a)
+data Vec a = (:::) !a {-# UNPACK #-} !(In.Vec a)
   deriving (Eq, Ord, Functor, Foldable, Traversable)
 
 infixr 5 :::

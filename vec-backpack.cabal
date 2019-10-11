@@ -69,7 +69,11 @@ executable main
   build-depends:
     , base
     , common
+    , deepseq
+    , fin
+    , ghc-heap
     , transformers
+    , vec
     , vec-backpack
 
 executable benchmark
