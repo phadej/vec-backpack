@@ -1,8 +1,10 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Out where
 
 import qualified In
 
-import ConsPattern
+import qualified ConsPattern
+import qualified Overloaded.Lists
 
 data Vec a = (:::) !a {-# UNPACK #-} !(In.Vec a)
   deriving (Eq, Ord, Functor, Foldable, Traversable)
@@ -19,6 +21,9 @@ instance Applicative Vec where
     pure x = x ::: pure x
     f ::: g <*> x ::: y = f x ::: (g <*> y)
 
-instance ConsPattern Vec In.Vec where
+instance ConsPattern.ConsPattern Vec In.Vec where
     build = (:::)
     match (x ::: xs) = (x, xs)
+
+instance Overloaded.Lists.Cons a (In.Vec a) (Vec a) where
+    cons = (:::)

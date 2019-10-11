@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternSynonyms, ViewPatterns, MonoLocalBinds #-}
+{-# OPTIONS -fplugin=Overloaded -fplugin-opt=Overloaded:Lists #-}
 {-# OPTIONS_GHC -Wall #-}
 -- {-# OPTIONS_GHC -ddump-simpl -dsuppress-all #-}
 module Main (main) where
@@ -14,8 +15,8 @@ import Control.Exception (evaluate)
 import Control.DeepSeq (force)
 import Control.Monad ((>=>))
 import Control.Applicative (liftA2)
-import Control.Monad.Trans.State (evalState, state)
-import Control.Monad.Trans.Maybe (MaybeT, runMaybeT)
+import Data.List (mapAccumL)
+import Control.Monad.Trans.Maybe (MaybeT (..), runMaybeT)
 import Control.Monad.IO.Class (liftIO)
 
 import qualified Data.Vec.Lazy.Inline as GADT
@@ -31,11 +32,11 @@ import GHC.Exts.Heap
 pattern Nil :: V0.Vec a
 pattern Nil = V0.Nil
 
-pattern (::*) :: ConsPattern v t => a -> t a -> v a
-pattern x ::* xs <- (match -> (x, xs)) where
-    x ::* xs = build x xs
+pattern (:::) :: ConsPattern v t => a -> t a -> v a
+pattern x ::: xs <- (match -> (x, xs))
+  where x ::: xs = build x xs
 
-infixr 5 ::*
+infixr 5 :::
 
 -------------------------------------------------------------------------------
 -- Vectors
@@ -51,13 +52,13 @@ v2 :: V2.Vec Double
 v2 = pure 2.0
 
 v3 :: V3.Vec Double
-v3 = evalState (traverse (const $ state $ \n -> (n, succ n)) (pure ())) 0
+v3 = snd $ mapAccumL (\n _ -> (succ n, n)) 0 (pure ())
 
 v3a :: V3.Vec Double
-v3a = 1 ::* 2 ::* 3 ::* Nil
+v3a = 1 ::: 2 ::: 3 ::: Nil
 
 v3b :: V3.Vec Double
-v3b = 5 ::* 7 ::* 9 ::* Nil
+v3b = [5, 6, 7]
 
 -------------------------------------------------------------------------------
 -- Main
@@ -119,4 +120,4 @@ calculateSize val = do
             + sum ds       -- size of pointed data
     go x = do
         liftIO $ print x
-        return 0
+        MaybeT (return Nothing)
